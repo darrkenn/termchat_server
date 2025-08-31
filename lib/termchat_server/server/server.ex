@@ -8,13 +8,8 @@ defmodule Server do
     send_resp(conn, 200, "Im termchat server")
   end
 
-  post "/echo" do
-    {:ok, body, _conn} = Plug.Conn.read_body(conn)
-    send_resp(conn, 200, body)
-  end
-
   match "/websocket" do
-    WebSockAdapter.upgrade(conn, Socket.ChatSocket, %{}, [])
+    WebSockAdapter.upgrade(conn, Client.Socket, %{}, [])
   end
 
   match _ do
