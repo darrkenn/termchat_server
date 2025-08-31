@@ -8,8 +8,8 @@ defmodule Server do
     send_resp(conn, 200, "Im termchat server")
   end
 
-  match "/websocket" do
-    WebSockAdapter.upgrade(conn, Client.Socket, %{}, [])
+  match "/chat" do
+    WebSockAdapter.upgrade(conn, Client.Socket, %{}, timeout: 120_000)
   end
 
   match _ do
