@@ -22,6 +22,7 @@ defmodule TermchatServer.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:jason, "~> 1.4"},
       {:bandit, "~> 1.8"},
       {:websock_adapter, "~> 0.5"}
     ]

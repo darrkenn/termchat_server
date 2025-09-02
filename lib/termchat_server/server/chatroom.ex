@@ -2,18 +2,23 @@ defmodule Server.Chatroom do
   use GenServer
 
   def start_link(_opts), do: GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
-
   def join(pid, username), do: GenServer.cast(__MODULE__, {:join, pid, username})
   def leave(pid), do: GenServer.cast(__MODULE__, {:leave, pid})
   def broadcast(pid, msg), do: GenServer.cast(__MODULE__, {:broadcast, pid, msg})
   def list_users, do: GenServer.call(__MODULE__, :list_users)
-
   def init(_), do: {:ok, %{clients: %{}}}
 
-  # Casts
   def handle_cast({:join, pid, username}, state) do
-    Process.monitor(pid)
-    {:noreply, %{state | clients: Map.put(state.clients, pid, username)}}
+    {:ok, json} = Utils.Json.read_decode("/etc/termchat/server/config.json")
+
+    if map_size(state.clients) < json["max_users"] do
+      Process.monitor(pid)
+      {:noreply, %{state | clients: Map.put(state.clients, pid, username)}}
+    else
+      send(pid, {:error, :max_users_reached})
+      Process.exit(pid, :normal)
+      {:noreply, state}
+    end
   end
 
   def handle_cast({:leave, pid}, state) do
@@ -30,7 +35,6 @@ defmodule Server.Chatroom do
     {:noreply, state}
   end
 
-  # Calls
   def handle_call(:list_users, _, state) do
     usernames = Map.values(state.clients)
     {:reply, usernames, state}

@@ -19,6 +19,10 @@ defmodule Client.Socket do
         users = Server.Chatroom.list_users()
         {:push, {:text, "Connected users: #{Enum.join(users, ", ")}"}, state}
 
+      "/leave" ->
+        Server.Chatroom.leave(self())
+        {:stop, :normal, state}
+
       "" ->
         {:ok, state}
 
@@ -30,6 +34,14 @@ defmodule Client.Socket do
 
   def handle_info({:send, frame}, state) do
     {:push, frame, state}
+  end
+
+  def handle_info({:error, :max_users_reached}, state) do
+    {:stop, :normal, state}
+  end
+
+  def handle_info({:EXIT, _, _}, state) do
+    {:stop, :normal, state}
   end
 
   def terminate(_reason), do: Server.Chatroom.leave(self())

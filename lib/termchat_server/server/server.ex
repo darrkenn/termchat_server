@@ -5,7 +5,16 @@ defmodule Server do
   plug(:dispatch)
 
   get "/" do
-    send_resp(conn, 200, "Im termchat server")
+    case Utils.Json.read_decode("/etc/termchat/server/info.json") do
+      {:ok, json} ->
+        conn
+        |> put_resp_content_type("application/json")
+        |> send_resp(200, Jason.encode!(json))
+
+      {:error, error} ->
+        conn
+        |> send_resp(500, "#{inspect(error)}")
+    end
   end
 
   match "/chat" do
