@@ -5,6 +5,8 @@ defmodule Server do
   plug(:dispatch)
 
   get "/" do
+    IO.puts("User requested json")
+
     case Utils.Json.read_decode("/etc/termchat/server/info.json") do
       {:ok, json} ->
         conn

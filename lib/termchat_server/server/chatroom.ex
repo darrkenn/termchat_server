@@ -28,8 +28,18 @@ defmodule Server.Chatroom do
   def handle_cast({:broadcast, pid, msg}, state) do
     username = Map.get(state.clients, pid, "???")
 
+    json =
+      Jason.encode!(%{
+        type: "message",
+        from: username,
+        body: msg
+      })
+
     Enum.each(state.clients, fn {client, _} ->
-      send(client, {:send, {:text, "[#{username}]: #{msg}"}})
+      send(
+        client,
+        {:send, {:text, json}}
+      )
     end)
 
     {:noreply, state}
