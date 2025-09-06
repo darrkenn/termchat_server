@@ -4,7 +4,6 @@ defmodule TermchatServer.Application do
   @impl true
   def start(_type, _args) do
     IO.puts("Starting up server")
-
     children = [
       {Bandit, plug: Server, scheme: :http, port: 3113},
       Server.Chatroom
