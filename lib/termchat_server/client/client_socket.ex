@@ -8,7 +8,7 @@ defmodule Client.Socket do
 
   def handle_in({response, [opcode: :text]}, %{await: :username} = state) do
     case Jason.decode(response) do
-      {:ok, %{"type" => "response", "username" => username}} ->
+      {:ok, %{"type" => "response", "value" => username}} ->
         new_state = %{await: :password, username: username}
         {:push, {:text, ~s({"type":"request","reason":"password"})}, new_state}
 
@@ -17,10 +17,11 @@ defmodule Client.Socket do
     end
   end
 
-  def handle_in({raw, [opcode: :text]}, %{await: :password, username: username} = state) do
-    case Jason.decode(raw) do
-      {:ok, %{"type" => "response", "password" => _password}} ->
+  def handle_in({response, [opcode: :text]}, %{await: :password, username: username} = state) do
+    case Jason.decode(response) do
+      {:ok, %{"type" => "response", "value" => _password}} ->
         Server.Chatroom.join(self(), username)
+        IO.puts("User successfully connected")
         {:push, {:text, ~s({"type":"server","reason":"authenticated"})}, %{username: username}}
 
       _ ->
@@ -28,21 +29,36 @@ defmodule Client.Socket do
     end
   end
 
-  def handle_in({message, [opcode: :text]}, state) do
-    case message do
-      "/connected" ->
-        users = Server.Chatroom.list_users()
-        {:push, {:text, "Connected users: #{Enum.join(users, ", ")}"}, state}
+  def handle_in({response, [opcode: :text]}, state) do
+    case Jason.decode(response) do
+      {:ok, %{"type" => "message", "value" => message}} ->
+        case message do
+          "/connected" ->
+            users = Server.Chatroom.list_users()
 
-      "/leave" ->
-        Server.Chatroom.leave(self())
-        {:stop, :normal, state}
+            json =
+              Jason.encode!(%{
+                type: "server",
+                reason: "message",
+                body: Enum.join(users, ", ")
+              })
 
-      "" ->
-        {:ok, state}
+            send(self(), {:send, {:text, json}})
+            {:ok, state}
+
+          "/leave" ->
+            Server.Chatroom.leave(self())
+            {:stop, :normal, state}
+
+          "" ->
+            {:ok, state}
+
+          _ ->
+            Server.Chatroom.broadcast(self(), message)
+            {:ok, state}
+        end
 
       _ ->
-        Server.Chatroom.broadcast(self(), message)
         {:ok, state}
     end
   end
