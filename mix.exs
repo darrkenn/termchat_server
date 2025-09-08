@@ -24,6 +24,8 @@ defmodule TermchatServer.MixProject do
     [
       {:jason, "~> 1.4"},
       {:bandit, "~> 1.8"},
+      {:ecto_sql, "~> 3.0"},
+      {:exqlite, "~> 0.27"},
       {:websock_adapter, "~> 0.5"}
     ]
   end
