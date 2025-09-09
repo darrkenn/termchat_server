@@ -1,4 +1,5 @@
 defmodule Client.Socket do
+  alias Server.Chatroom
   @behaviour WebSock
 
   def init(_state) do
@@ -57,6 +58,10 @@ defmodule Client.Socket do
             Server.Chatroom.broadcast(self(), message)
             {:ok, state}
         end
+
+      {:ok, %{"type" => "priv_msg", "receiver" => receiver, "message" => message}} ->
+        Chatroom.priv_msg(self(), message, receiver)
+        {:ok, state}
 
       _ ->
         {:ok, state}

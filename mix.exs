@@ -26,7 +26,8 @@ defmodule TermchatServer.MixProject do
       {:bandit, "~> 1.8"},
       {:ecto_sql, "~> 3.0"},
       {:exqlite, "~> 0.27"},
-      {:websock_adapter, "~> 0.5"}
+      {:websock_adapter, "~> 0.5"},
+      {:bcrypt_elixir, "~> 3.0"}
     ]
   end
 end
