@@ -44,7 +44,7 @@ defmodule Client.Socket do
                 ~s({"type":"server","reason":"authenticated"})
 
               {:ok, false} ->
-                ~s({"type":"server","reason":"unauthenticated","reason":"Incorrect password"})
+                ~s({"type":"server","reason":"unauthenticated","message":"Incorrect password"})
             end
           else
             Server.Chatroom.create_account(password, username)
@@ -79,6 +79,10 @@ defmodule Client.Socket do
           "/leave" ->
             Server.Chatroom.leave(self())
             {:stop, :normal, state}
+
+          "/clear" ->
+            send(self(), {:send, {:text, ~s({"type":"server","reason":"clear"})}})
+            {:ok, state}
 
           "" ->
             {:ok, state}
