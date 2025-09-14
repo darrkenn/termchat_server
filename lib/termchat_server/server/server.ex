@@ -20,7 +20,7 @@ defmodule Server do
   end
 
   match "/chat" do
-    WebSockAdapter.upgrade(conn, Client.Socket, %{}, timeout: 120_000)
+    WebSockAdapter.upgrade(conn, Client.Socket, %{}, timeout: 600_000)
   end
 
   match _ do

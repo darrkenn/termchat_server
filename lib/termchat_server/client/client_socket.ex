@@ -44,7 +44,7 @@ defmodule Client.Socket do
                 ~s({"type":"server","reason":"authenticated"})
 
               {:ok, false} ->
-                ~s({"type":"server","reason":"unauthenticated"})
+                ~s({"type":"server","reason":"unauthenticated","reason":"Incorrect password"})
             end
           else
             Server.Chatroom.create_account(password, username)
