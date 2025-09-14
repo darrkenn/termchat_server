@@ -3,11 +3,21 @@ defmodule Server.Chatroom do
 
   def start_link(conn), do: GenServer.start_link(__MODULE__, %{conn: conn}, name: __MODULE__)
 
+  # Authentication
+  def username_exists(username), do: GenServer.call(__MODULE__, {:username_exists, username})
+
+  def create_account(pass, username),
+    do: GenServer.call(__MODULE__, {:create_account, pass, username})
+
+  def correct_password(pass, username),
+    do: GenServer.call(__MODULE__, {:correct_password, pass, username})
+
   def join(pid, username), do: GenServer.cast(__MODULE__, {:join, pid, username})
   def leave(pid), do: GenServer.cast(__MODULE__, {:leave, pid})
-  def init(_), do: {:ok, %{clients: %{}}}
+  def init(%{conn: conn}), do: {:ok, %{conn: conn, clients: %{}}}
 
   def broadcast(pid, msg), do: GenServer.cast(__MODULE__, {:broadcast, pid, msg})
+
   # User Commands
   def list_users, do: GenServer.call(__MODULE__, :list_users)
 
@@ -81,6 +91,77 @@ defmodule Server.Chatroom do
   def handle_call(:list_users, _, state) do
     usernames = Map.values(state.clients)
     {:reply, usernames, state}
+  end
+
+  def handle_call({:username_exists, username}, _, state) do
+    {:ok, statement} =
+      Exqlite.Sqlite3.prepare(
+        state.conn,
+        "SELECT username FROM Users WHERE username = ? LIMIT 1"
+      )
+
+    :ok = Exqlite.Sqlite3.bind(statement, [username])
+
+    exists =
+      case Exqlite.Sqlite3.step(state.conn, statement) do
+        {:row, _} -> true
+        :done -> false
+      end
+
+    :ok = Exqlite.Sqlite3.release(state.conn, statement)
+
+    {:reply, exists, state}
+  end
+
+  def handle_call({:create_account, pass, username}, _, state) do
+    hashed_pass = Bcrypt.hash_pwd_salt(pass)
+
+    {:ok, statement} =
+      Exqlite.Sqlite3.prepare(
+        state.conn,
+        "INSERT INTO Users (username, password) VALUES (?, ?)"
+      )
+
+    :ok = Exqlite.Sqlite3.bind(statement, [username, hashed_pass])
+
+    result =
+      case Exqlite.Sqlite3.step(state.conn, statement) do
+        :done -> {:ok, "User created"}
+        {:row, _} -> {:error, "Error"}
+      end
+
+    :ok = Exqlite.Sqlite3.release(state.conn, statement)
+
+    {:reply, result, state}
+  end
+
+  def handle_call({:correct_password, pass, username}, _, state) do
+    {:ok, statement} =
+      Exqlite.Sqlite3.prepare(
+        state.conn,
+        "SELECT password FROM Users WHERE username = ? LIMIT 1"
+      )
+
+    :ok = Exqlite.Sqlite3.bind(statement, [username])
+
+    result =
+      case Exqlite.Sqlite3.step(state.conn, statement) do
+        {:row, [hashed_pass]} ->
+          if Bcrypt.verify_pass(pass, hashed_pass) do
+            IO.puts("Password correct")
+            {:ok, true}
+          else
+            IO.puts("Password incorrect")
+            {:ok, false}
+          end
+
+        :done ->
+          {:ok, false}
+      end
+
+    :ok = Exqlite.Sqlite3.release(state.conn, statement)
+
+    {:reply, result, state}
   end
 
   def handle_info({:DOWN, _, :process, pid, _}, state) do

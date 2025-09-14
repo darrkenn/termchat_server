@@ -10,7 +10,19 @@ defmodule Client.Socket do
   def handle_in({response, [opcode: :text]}, %{await: :username} = state) do
     case Jason.decode(response) do
       {:ok, %{"type" => "response", "value" => username}} ->
-        new_state = %{await: :password, username: username}
+        exists = Server.Chatroom.username_exists(username)
+
+        account_exists =
+          if exists do
+            IO.puts("Username exists")
+            true
+          else
+            IO.puts("Username doesnt exist")
+            false
+          end
+
+        new_state = %{await: :password, username: username, account_exists: account_exists}
+
         {:push, {:text, ~s({"type":"request","reason":"password"})}, new_state}
 
       _ ->
@@ -18,12 +30,29 @@ defmodule Client.Socket do
     end
   end
 
-  def handle_in({response, [opcode: :text]}, %{await: :password, username: username} = state) do
+  def handle_in(
+        {response, [opcode: :text]},
+        %{await: :password, username: username, account_exists: account_exists} = state
+      ) do
     case Jason.decode(response) do
-      {:ok, %{"type" => "response", "value" => _password}} ->
-        Server.Chatroom.join(self(), username)
-        IO.puts("User successfully connected")
-        {:push, {:text, ~s({"type":"server","reason":"authenticated"})}, %{username: username}}
+      {:ok, %{"type" => "response", "value" => password}} ->
+        authenticated =
+          if account_exists do
+            case Server.Chatroom.correct_password(password, username) do
+              {:ok, true} ->
+                Server.Chatroom.join(self(), username)
+                ~s({"type":"server","reason":"authenticated"})
+
+              {:ok, false} ->
+                ~s({"type":"server","reason":"unauthenticated"})
+            end
+          else
+            Server.Chatroom.create_account(password, username)
+            Server.Chatroom.join(self(), username)
+            ~s({"type":"server","reason":"authenticated"})
+          end
+
+        {:push, {:text, authenticated}, %{username: username}}
 
       _ ->
         {:ok, state}
