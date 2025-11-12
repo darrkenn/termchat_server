@@ -1,5 +1,5 @@
 image: darrkenn/cythe-elixir:latest
-track: main
+track: master
 
 steps:
   - name: Checkout repo
