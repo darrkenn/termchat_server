@@ -4,8 +4,6 @@ track: master
 steps:
   - name: Checkout repo
     use: cythe-checkout
-  - name: Create test path
-    run: mkdir test
   - name: Mix deps.get
     run: mix deps.get
   - name: Mix tests
